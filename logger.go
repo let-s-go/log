@@ -21,15 +21,10 @@ func NewLogger(writer io.Writer) *Logger {
 	}
 }
 
-func NewFileLogger(fileName string) (*Logger, error) {
-	file, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0777)
-	if err != nil {
-		fmt.Println(err)
-		return nil, err
-	}
+func NewFileLogger(fileName string, fileSize int64) *Logger {
 	return &Logger{
-		writer: file,
-	}, nil
+		writer: newFileWriter(fileName, fileSize),
+	}
 }
 
 func (logger *Logger) SetLevel(level Level) {
