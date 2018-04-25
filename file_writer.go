@@ -2,21 +2,31 @@ package log
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path"
+	"path/filepath"
+	"sort"
+	"strings"
+	"sync"
 	"time"
 )
 
 type fileWriter struct {
 	fileName string
 	fileSize int64
-	size     int64
-	file     *os.File
+	maxFile  int
+
+	locker sync.Mutex
+	size   int64
+	file   *os.File
 }
 
-func newFileWriter(fileName string, fileSize int64) *fileWriter {
+func newFileWriter(fileName string, fileSize int64, maxFile int) *fileWriter {
 	return &fileWriter{
 		fileName: fileName,
 		fileSize: fileSize,
+		maxFile:  maxFile,
 	}
 }
 
@@ -27,6 +37,9 @@ func (f *fileWriter) Write(p []byte) (int, error) {
 		f.file.Close()
 		os.Rename(oldName, newName)
 		f.file = nil
+		if f.maxFile > 0 {
+			go f.remove()
+		}
 	}
 	if f.file == nil {
 		oldName := f.fileName + ".log"
@@ -46,4 +59,27 @@ func (f *fileWriter) Write(p []byte) (int, error) {
 	n, err := f.file.Write(p)
 	f.size += int64(n)
 	return n, err
+}
+
+func (f *fileWriter) remove() {
+	f.locker.Lock()
+	defer f.locker.Unlock()
+
+	dir, name := path.Split(f.fileName)
+
+	infos, _ := ioutil.ReadDir(dir)
+	ns := make([]string, 0)
+	for _, info := range infos {
+		if !info.IsDir() {
+			n := info.Name()
+			if n != name+".log" && strings.HasPrefix(n, name) {
+				ns = append(ns, n)
+			}
+		}
+	}
+
+	sort.Strings(ns)
+	for i := 0; i < len(ns)-f.maxFile; i++ {
+		os.Remove(filepath.Join(dir, ns[i]))
+	}
 }
