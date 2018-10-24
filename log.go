@@ -10,8 +10,8 @@ func StdLogger() *Logger {
 	return stdLogger
 }
 
-func SetOptions(level Level, fileLine bool) {
-	stdLogger.SetOptions(level, fileLine)
+func SetOptions(level Level, callerDepth int) {
+	stdLogger.SetOptions(level, callerDepth)
 }
 
 func Debugf(format string, args ...interface{}) {

@@ -15,10 +15,10 @@ type Option struct {
 }
 
 type Logger struct {
-	writer   io.Writer
-	level    Level
-	fileLine bool
-	mutex    sync.Mutex
+	writer      io.Writer
+	level       Level
+	callerDepth int
+	mutex       sync.Mutex
 }
 
 func NewLogger(writer io.Writer) *Logger {
@@ -34,9 +34,9 @@ func NewFileLogger(fileName string, fileSize int64, maxFile int) *Logger {
 	}
 }
 
-func (logger *Logger) SetOptions(level Level, fileLine bool) {
+func (logger *Logger) SetOptions(level Level, callerDepth int) {
 	logger.level = level
-	logger.fileLine = fileLine
+	logger.callerDepth = callerDepth
 }
 
 func (logger *Logger) Debugf(format string, args ...interface{}) {
@@ -151,8 +151,8 @@ func (logger *Logger) write(level Level, str string) {
 	logger.mutex.Lock()
 	defer logger.mutex.Unlock()
 
-	if logger.fileLine {
-		_, file, line, ok := runtime.Caller(4)
+	if logger.callerDepth > 0 {
+		_, file, line, ok := runtime.Caller(logger.callerDepth)
 		if !ok {
 			file = "???"
 			line = 0
